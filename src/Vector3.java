@@ -17,10 +17,10 @@ public class Vector3 {
 		this.z = z;
 	}
 	
-	public void setPos(double x, double y, double z) {
-		this.x = x;
-		this.y = y;
-		this.z = z;
+	public void setPos(Vector3 v) {
+		this.x = v.x;
+		this.y = v.y;
+		this.z = v.z;
 	}
 	
 	public void setX(double x) {
@@ -33,6 +33,16 @@ public class Vector3 {
 	
 	public void setZ(double z) {
 		this.z = z;
+	}
+	
+	public Vector3 add(Vector3 v) {
+		return new Vector3(x + v.x, y + v.y, z + v.z);
+	}
+	
+	public void move(Vector3 v) {
+		x += v.x;
+		y += v.y;
+		z += v.z;
 	}
 	
 	public double getX() {
@@ -57,6 +67,11 @@ public class Vector3 {
 	
 	public double mag() {
 		return Math.sqrt(x * x + y * y + z * z);
+	}
+	
+	public Vector3 normalize() {
+		double mag = mag();
+		return new Vector3(x / mag, y / mag, z / mag);
 	}
 	
 	public double distance(Vector3 other) {
