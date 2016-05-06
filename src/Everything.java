@@ -44,7 +44,7 @@ public class Everything extends Canvas implements KeyListener {
 		int fps = 0;
 		screen = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
 		pixels = ((DataBufferInt) screen.getRaster().getDataBuffer()).getData();
-		fieldOfView = Math.toRadians(60);
+		fieldOfView = Math.toRadians(90);
 		center = new Vector3(WIDTH / 2, HEIGHT / 2);
 		rot = new Vector3(0f, 0f);
 		addKeyListener(this);
@@ -82,13 +82,26 @@ public class Everything extends Canvas implements KeyListener {
 	
 	private void renderPoint(Vector3 point) {
 		double dx = Math.cos(fieldOfView / 2.0) / Math.sin(fieldOfView / 2.0);
-		//System.out.printf("%.5f : ", dx);
-		if(point.getZ() - center.getZ() <= 0) {
+		double xT = point.getX() - center.getX();
+		xT /= WIDTH / 2;
+		double yT = point.getY() - center.getY();
+		yT /= HEIGHT / 2;
+		double zT = point.getZ() - center.getZ();
+		double theta = Math.atan2(xT, zT);
+		theta += rot.getZ();
+		//System.out.println(Math.toDegrees(theta));
+		double dist = Math.sqrt(xT * xT + zT * zT);
+		zT = dist * Math.cos(theta);
+		xT = dist * Math.sin(theta);
+		xT *= WIDTH / 2;
+		yT *= HEIGHT / 2;
+		System.out.println(xT + " : " + zT);
+		if(zT < 0) {
 			return;
 		}
-		double xCord = (dx * (point.getX() - (center.getX()))) / (point.getZ() - (center.getZ())) + center.getX();
+		double xCord = (dx * (xT / (zT))) + center.getX();
 		//xCord += xCord * Math.cos(rot.getZ()) - xCord;
-		double yCord = (dx * (point.getY() - center.getY())) / (point.getZ() - center.getZ()) + center.getY();
+		double yCord = (dx * (yT / zT)) + center.getY();
 		//System.out.printf("%.2f : %.2f\n", xCord, yCord);
 		if(xCord >= 0 && xCord < WIDTH && yCord >= 0 && yCord < HEIGHT) {
 			
@@ -101,6 +114,7 @@ public class Everything extends Canvas implements KeyListener {
 			renderPoint(new Vector3(200, 200, i));
 			renderPoint(new Vector3(200, 200 + 50, i));
 		}
+		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, 2));
 
 	}
 	
@@ -146,13 +160,13 @@ public class Everything extends Canvas implements KeyListener {
 			}
 		}
 		if(e.getKeyCode() == KeyEvent.VK_CLOSE_BRACKET){
-			rot.move(new Vector3(0, 0, -Math.PI / 60));
+			rot.move(new Vector3(0, 0, -Math.PI / 180));
 			if(rot.getZ() < 0) {
 				rot.move(new Vector3(0, 0, Math.PI * 2));
 			}
 		}
 		if(e.getKeyCode() == KeyEvent.VK_OPEN_BRACKET){
-			rot.move(new Vector3(0, 0, Math.PI / 60));
+			rot.move(new Vector3(0, 0, Math.PI / 180));
 			if(rot.getZ() > Math.PI * 2) {
 				rot.move(new Vector3(0, 0, -Math.PI * 2));
 			}
