@@ -65,7 +65,7 @@ public class Everything extends Canvas implements KeyListener {
 		//initialize the camera at the center and with no rotation
 		fieldOfView = Math.toRadians(90);
 		camPos = new Vector3(WIDTH / 2, HEIGHT / 2);
-		camRot = new Vector3();
+		camRot = new Vector3(0f, Math.PI / 2, 0f);
 		
 		//use implemented KeyListener methods from this class
 		addKeyListener(this);
@@ -115,15 +115,23 @@ public class Everything extends Canvas implements KeyListener {
 		double yT = point.getY() - camPos.getY();
 		yT /= HEIGHT / 2;
 		double zT = point.getZ() - camPos.getZ();
-		double theta = Math.atan2(xT, zT);
-		theta += camRot.getZ();
+		boolean neg = zT < 0;
+		double thetaX = Math.atan2(zT, xT);
+		double thetaY = Math.atan2(yT, zT);
+		thetaX += camRot.getZ();
+		thetaY += camRot.getY();
 		//System.out.println(Math.toDegrees(theta));
-		double dist = Math.sqrt(xT * xT + zT * zT);
-		zT = dist * Math.cos(theta);
-		xT = dist * Math.sin(theta);
+		double distX = Math.sqrt(xT * xT + zT * zT);
+		double distY = Math.sqrt(yT * yT + zT * zT);
+		double fullDist = Math.sqrt(xT * xT + yT * yT + zT * zT);
+		zT = fullDist * Math.sin(thetaX) * Math.sin(thetaY);
+		xT = distX * Math.cos(thetaX);
+		yT = distY * Math.cos(thetaY);
 		xT *= WIDTH / 2;
 		yT *= HEIGHT / 2;
-		System.out.println(xT + " : " + zT);
+		if(neg) {
+			zT = -zT;
+		}
 		if(zT < 0) {
 			return;
 		}
@@ -138,11 +146,14 @@ public class Everything extends Canvas implements KeyListener {
 	}
 	
 	private void renderThings() {
-		for(double i = 0.5; i < 5.0; i+=0.5) {
+		for(double i = -4.5; i < 5; i+=0.5) {
 			renderPoint(new Vector3(200, 200, i));
 			renderPoint(new Vector3(200, 200 + 50, i));
+			renderPoint(new Vector3(400, 200, i));
+			renderPoint(new Vector3(400, 200 + 50, i));
 		}
 		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, 2));
+		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, -2));
 
 	}
 	
@@ -153,7 +164,7 @@ public class Everything extends Canvas implements KeyListener {
 		g.setColor(Color.YELLOW);
 		//draw some debug information on the bottom of the screen
 		g.drawString(String.format("X: %.2f Y: %.2f Z: %.2f FOV: %.2f", camPos.getX(), camPos.getY(), camPos.getZ(), Math.toDegrees(fieldOfView)), 5, HEIGHT * 2 - 18);
-		g.drawString(String.format("ZRot: %.2f FPS: %d", Math.toDegrees(camRot.getZ()), frames), 5, HEIGHT * 2 - 5);
+		g.drawString(String.format("Yaw: %.2f Pitch: %.2f FPS: %d", Math.toDegrees(camRot.getZ()), Math.toDegrees(camRot.getY()), frames), 5, HEIGHT * 2 - 5);
 	}
 
 	@Override
@@ -161,7 +172,7 @@ public class Everything extends Canvas implements KeyListener {
 		//resets the camera location and rotation
 		if(e.getKeyCode() == KeyEvent.VK_R) {
 			camPos = new Vector3(WIDTH / 2, HEIGHT / 2, 0);
-			camRot = new Vector3(0, 0, 0);
+			camRot = new Vector3(0, Math.PI / 2, 0);
 		}
 		
 		//handle input movement left-right, up-down, and in-out
@@ -209,6 +220,18 @@ public class Everything extends Canvas implements KeyListener {
 			camRot.move(new Vector3(0, 0, Math.PI / 180));
 			if(camRot.getZ() > Math.PI * 2) {
 				camRot.move(new Vector3(0, 0, -Math.PI * 2));
+			}
+		}
+		if(e.getKeyCode() == KeyEvent.VK_MINUS) {
+			camRot.move(new Vector3(0, Math.PI / 180, 0));
+			if(camRot.getY() > Math.PI){
+				camRot.setY(Math.PI);
+			}
+		}
+		if(e.getKeyCode() == KeyEvent.VK_EQUALS) {
+			camRot.move(new Vector3(0, -Math.PI / 180, 0));
+			if(camRot.getY() < 0){
+				camRot.setY(0);
 			}
 		}
 	}
