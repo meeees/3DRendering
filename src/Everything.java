@@ -27,6 +27,8 @@ public class Everything extends Canvas implements KeyListener {
 	private double fieldOfView;
 	//the data for the screen image
 	private int[] pixels;
+	//zbuffer
+	private double[] zBuffer;
 	//the actual BufferedImage object being used as a screen
 	private BufferedImage screen;
 	//frame count from last second
@@ -62,7 +64,7 @@ public class Everything extends Canvas implements KeyListener {
 		screen = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
 		//this array of ints is tied to the screen data, so drawing the image will draw the data represented by this array
 		pixels = ((DataBufferInt) screen.getRaster().getDataBuffer()).getData();
-		
+		zBuffer = new double[WIDTH * HEIGHT];
 		//initialize the camera at the center and with no rotation
 		fieldOfView = Math.toRadians(90);
 		camPos = new Vector3(WIDTH / 2, HEIGHT / 2);
@@ -106,6 +108,7 @@ public class Everything extends Canvas implements KeyListener {
 	//fills the pixels array with black
 	private void clearScreen() {
 		Arrays.fill(pixels, 0xff000000);
+		Arrays.fill(zBuffer, -1);
 	}
 	
 	//stores the x and y coords in x and y of the vector3, and 1 or -1 in z if the result is on or off screen
@@ -148,14 +151,14 @@ public class Everything extends Canvas implements KeyListener {
 		double yCord = (dx * (yT / zT)) + camPos.getY();
 		//System.out.printf("%f, %f : %f, %f\n", xCord, yCord, (dx * (xT / (zT))), (dx * (yT / (zT))));
 		//System.out.printf("%.2f : %.2f\n", xCord, yCord);
-		return new Vector3(xCord, yCord, flip ? -1 : 1);
+		return new Vector3(xCord, yCord, flip ? -zT : zT);
 	}
 	
 	//render a single point, using the pixels array as the screen
-	private void renderPoint(Vector3 point) {
+	private void renderPoint(Vector3 point, int color) {
 		Vector3 screenPoint = pointToScreen(point);
 		//culling
-		if(screenPoint.getZ() == -1)
+		if(screenPoint.getZ() < 0)
 		{
 			return;
 		}
@@ -163,8 +166,13 @@ public class Everything extends Canvas implements KeyListener {
 		double yCord = screenPoint.getY();
 
 		if(xCord >= 0 && xCord < WIDTH && yCord >= 0 && yCord < HEIGHT) {
-			
-			pixels[(int) yCord * WIDTH + (int) xCord] = 0xffff0000;
+			int pos = (int) yCord * WIDTH + (int) xCord;
+			if(zBuffer[pos] > screenPoint.getZ() || zBuffer[pos] == -1)
+			{
+				pixels[pos] = color;
+				zBuffer[pos] = screenPoint.getZ();
+			}
+
 		}
 	}
 	
@@ -173,7 +181,7 @@ public class Everything extends Canvas implements KeyListener {
 		Vector3 sP1 = pointToScreen(p1);
 		Vector3 sP2 = pointToScreen(p2);
 		//lazy culling for now
-		if(sP1.getZ() == -1 || sP2.getZ() == -1)
+		if(sP1.getZ() < 0 || sP2.getZ() < 0)
 			return;
 		double xS = sP1.getX();
 		double xE = sP2.getX();
@@ -181,7 +189,7 @@ public class Everything extends Canvas implements KeyListener {
 		double yE = sP2.getY();
 		//System.out.printf("%f, %f, %f, %f\n", xS, xE, yS, yE);
 		//more lazy culling
-		if(xS < 0 || xE >= WIDTH || yS < 0 || yE >= HEIGHT) {
+		if(Math.min(xS, xE) < 0 || Math.max(xS, xE) >= WIDTH || Math.min(yS, yE) < 0 || Math.max(yS, yE) >= HEIGHT) {
 			return;
 		}
 		boolean flipY = yE < yS;
@@ -190,7 +198,12 @@ public class Everything extends Canvas implements KeyListener {
 		{
 			for(double i = 0; i < Math.abs(yE - yS); i++)
 			{
-				pixels[(int) (yS + (flipY ? -i : i)) * WIDTH + (int) (xS)] = color;
+				int pos = (int) (yS + (flipY ? -i : i)) * WIDTH + (int) (xS);
+				if(zBuffer[pos] >  sP1.getZ() || zBuffer[pos] == -1)
+				{
+					pixels[pos] = color;
+					zBuffer[pos] = sP1.getZ();
+				}
 			}
 			return;
 		}
@@ -199,14 +212,24 @@ public class Everything extends Canvas implements KeyListener {
 		{
 			for(double i = 0; i < Math.abs(yE - yS); i++)
 			{
-				pixels[(int) (yS + (flipY ? -i : i)) * WIDTH + (int) (xS + (flipX ? -(i/slope) : (i/slope)))] = color;
+				int pos = (int) (yS + (flipY ? -i : i)) * WIDTH + (int) (xS + (flipX ? -(i/slope) : (i/slope)));
+				if(zBuffer[pos] >  sP1.getZ() || zBuffer[pos] == -1)
+				{
+					pixels[pos] = color;
+					zBuffer[pos] = sP1.getZ();
+				}
 			}
 		}
 		else
 		{
 			for(double i = 0; i < Math.abs(xE - xS); i++)
 			{
-				pixels[(int) (yS + (flipY ? slope * i : slope * -i)) * WIDTH + (int) (xS + (flipX ? -i : i))] = color;
+				int pos = (int) (yS + (flipY ? slope * i : slope * -i)) * WIDTH + (int) (xS + (flipX ? -i : i));
+				if(zBuffer[pos] >  sP1.getZ() || zBuffer[pos] == -1)
+				{
+					pixels[pos] = color;
+					zBuffer[pos] = sP1.getZ();
+				}
 			}
 		}
 		
@@ -225,8 +248,8 @@ public class Everything extends Canvas implements KeyListener {
 			//renderPoint(new Vector3(400, 200, i));
 			//renderPoint(new Vector3(400, 200 + 50, i));
 		}
-		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, 2));
-		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, -2));
+		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, 2), 0xffff0000);
+		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, -2), 0xffff0000);
 
 	}
 	
