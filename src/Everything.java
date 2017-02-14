@@ -7,6 +7,7 @@ import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.Arrays;
+import java.util.Random;
 
 import javax.swing.JFrame;
 
@@ -107,8 +108,9 @@ public class Everything extends Canvas implements KeyListener {
 		Arrays.fill(pixels, 0xff000000);
 	}
 	
-	//render a single point, using the pixels array as the screen
-	private void renderPoint(Vector3 point) {
+	//stores the x and y coords in x and y of the vector3, and 1 or -1 in z if the result is on or off screen
+	private Vector3 pointToScreen(Vector3 point)
+	{
 		double dx = Math.cos(fieldOfView / 2.0) / Math.sin(fieldOfView / 2.0);
 		double xT = point.getX() - camPos.getX();
 		xT /= WIDTH / 2;
@@ -134,27 +136,94 @@ public class Everything extends Canvas implements KeyListener {
 		if(neg) {
 			zT = -zT;
 		}
-		//culling
+		/*//culling
 		if(zT < 0) {
 			return;
-		}
+		}*/
+		boolean flip = zT < 0;
+		if(flip)
+			zT = -zT;
 		double xCord = (dx * (xT / zT)) + camPos.getX() + (WIDTH / 2 - camPos.getX());
 		//xCord += xCord * Math.cos(rot.getZ()) - xCord;
 		double yCord = (dx * (yT / zT)) + camPos.getY();
 		//System.out.printf("%f, %f : %f, %f\n", xCord, yCord, (dx * (xT / (zT))), (dx * (yT / (zT))));
 		//System.out.printf("%.2f : %.2f\n", xCord, yCord);
+		return new Vector3(xCord, yCord, flip ? -1 : 1);
+	}
+	
+	//render a single point, using the pixels array as the screen
+	private void renderPoint(Vector3 point) {
+		Vector3 screenPoint = pointToScreen(point);
+		//culling
+		if(screenPoint.getZ() == -1)
+		{
+			return;
+		}
+		double xCord = screenPoint.getX();
+		double yCord = screenPoint.getY();
+
 		if(xCord >= 0 && xCord < WIDTH && yCord >= 0 && yCord < HEIGHT) {
 			
 			pixels[(int) yCord * WIDTH + (int) xCord] = 0xffff0000;
 		}
 	}
 	
+	private void renderLine(Vector3 p1, Vector3 p2, int color)
+	{
+		Vector3 sP1 = pointToScreen(p1);
+		Vector3 sP2 = pointToScreen(p2);
+		//lazy culling for now
+		if(sP1.getZ() == -1 || sP2.getZ() == -1)
+			return;
+		double xS = sP1.getX();
+		double xE = sP2.getX();
+		double yS =	sP1.getY();
+		double yE = sP2.getY();
+		//System.out.printf("%f, %f, %f, %f\n", xS, xE, yS, yE);
+		//more lazy culling
+		if(xS < 0 || xE >= WIDTH || yS < 0 || yE >= HEIGHT) {
+			return;
+		}
+		boolean flipY = yE < yS;
+		boolean flipX = xE < xS;
+		if(xS - xE == 0)
+		{
+			for(double i = 0; i < Math.abs(yE - yS); i++)
+			{
+				pixels[(int) (yS + (flipY ? -i : i)) * WIDTH + (int) (xS)] = color;
+			}
+			return;
+		}
+		double slope = Math.abs(((yE - yS) / (xE - xS)));
+		if (slope > 1)
+		{
+			for(double i = 0; i < Math.abs(yE - yS); i++)
+			{
+				pixels[(int) (yS + (flipY ? -i : i)) * WIDTH + (int) (xS + (flipX ? -(i/slope) : (i/slope)))] = color;
+			}
+		}
+		else
+		{
+			for(double i = 0; i < Math.abs(xE - xS); i++)
+			{
+				pixels[(int) (yS + (flipY ? slope * i : slope * -i)) * WIDTH + (int) (xS + (flipX ? -i : i))] = color;
+			}
+		}
+		
+	}
+	
 	private void renderThings() {
 		for(double i = -4.5; i < 5; i+=0.5) {
-			renderPoint(new Vector3(200, 200, i));
-			renderPoint(new Vector3(200, 200 + 50, i));
-			renderPoint(new Vector3(400, 200, i));
-			renderPoint(new Vector3(400, 200 + 50, i));
+			Random rand = new Random((long) i);
+			int color = 0xff000000 | (rand.nextInt(256) << 16) | (rand.nextInt(256) << 8) | rand.nextInt(256);
+			//renderPoint(new Vector3(200, 200, i));
+			//renderPoint(new Vector3(200, 200 + 50, i));
+			renderLine(new Vector3(200, 200, i), new Vector3(200, 200 + 50, i), color);
+			renderLine(new Vector3(400, 200, i), new Vector3(400, 200 + 50, i), color);
+			renderLine(new Vector3(200, 200, i), new Vector3(400, 200, i), color);
+			renderLine(new Vector3(200, 200 + 50, i), new Vector3(400, 200 + 50, i), color);
+			//renderPoint(new Vector3(400, 200, i));
+			//renderPoint(new Vector3(400, 200 + 50, i));
 		}
 		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, 2));
 		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, -2));
