@@ -84,5 +84,9 @@ public class Vector3 {
 		double z = this.x * other.y - this.y * other.x;
 		return new Vector3(x, y, z);
 	}
+	
+	public Vector3 scale(double scalar) {
+		return new Vector3(x * scalar, y * scalar, z * scalar);
+	}
 
 }

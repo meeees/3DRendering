@@ -1,8 +1,6 @@
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
@@ -12,7 +10,7 @@ import java.util.Random;
 import javax.swing.JFrame;
 
 //this class name will probably be changed later
-public class Everything extends Canvas implements KeyListener {
+public class Engine extends Canvas {
 	
 	//some stuff java likes to have
 	private static final long serialVersionUID = 1L;
@@ -49,7 +47,7 @@ public class Everything extends Canvas implements KeyListener {
 		frame.setResizable(false);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setLocationRelativeTo(null);
-		Everything e = new Everything();
+		Engine e = new Engine();
 		frame.add(e);
 		frame.setLayout(null);
 		e.setBounds(0, 0, WIDTH * 2, HEIGHT * 2);
@@ -71,7 +69,9 @@ public class Everything extends Canvas implements KeyListener {
 		camRot = new Vector3(0f, Math.PI / 2, 0f);
 		
 		//use implemented KeyListener methods from this class
-		addKeyListener(this);
+		InputHandler ih = new InputHandler(this);
+		addMouseMotionListener(ih);
+		addKeyListener(ih);
 		//requests for the Canvas to be taking input from devices
 		requestFocus();
 		
@@ -111,7 +111,8 @@ public class Everything extends Canvas implements KeyListener {
 		Arrays.fill(zBuffer, -1);
 	}
 	
-	//stores the x and y coords in x and y of the vector3, and 1 or -1 in z if the result is on or off screen
+	//stores the x and y coords in x and y of the vector3, and z depth in z
+	//currently has a bug with proper yaw positioning
 	private Vector3 pointToScreen(Vector3 point)
 	{
 		double dx = Math.cos(fieldOfView / 2.0) / Math.sin(fieldOfView / 2.0);
@@ -224,7 +225,7 @@ public class Everything extends Canvas implements KeyListener {
 		{
 			for(double i = 0; i < Math.abs(xE - xS); i++)
 			{
-				int pos = (int) (yS + (flipY ? slope * i : slope * -i)) * WIDTH + (int) (xS + (flipX ? -i : i));
+				int pos = (int) (yS + (flipY ? slope * -i : slope * i)) * WIDTH + (int) (xS + (flipX ? -i : i));
 				if(zBuffer[pos] >  sP1.getZ() || zBuffer[pos] == -1)
 				{
 					pixels[pos] = color;
@@ -237,16 +238,16 @@ public class Everything extends Canvas implements KeyListener {
 	
 	private void renderThings() {
 		for(double i = -4.5; i < 5; i+=0.5) {
-			Random rand = new Random((long) i);
+			Random rand = new Random((long) (i * 10));
 			int color = 0xff000000 | (rand.nextInt(256) << 16) | (rand.nextInt(256) << 8) | rand.nextInt(256);
-			//renderPoint(new Vector3(200, 200, i));
-			//renderPoint(new Vector3(200, 200 + 50, i));
 			renderLine(new Vector3(200, 200, i), new Vector3(200, 200 + 50, i), color);
 			renderLine(new Vector3(400, 200, i), new Vector3(400, 200 + 50, i), color);
 			renderLine(new Vector3(200, 200, i), new Vector3(400, 200, i), color);
 			renderLine(new Vector3(200, 200 + 50, i), new Vector3(400, 200 + 50, i), color);
-			//renderPoint(new Vector3(400, 200, i));
-			//renderPoint(new Vector3(400, 200 + 50, i));
+			/*renderPoint(new Vector3(200, 200, i), color);
+			renderPoint(new Vector3(200, 200 + 50, i), color);
+			renderPoint(new Vector3(400, 200, i), color);
+			renderPoint(new Vector3(400, 200 + 50, i), color);*/
 		}
 		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, 2), 0xffff0000);
 		renderPoint(new Vector3(WIDTH / 2, HEIGHT / 2, -2), 0xffff0000);
@@ -262,84 +263,34 @@ public class Everything extends Canvas implements KeyListener {
 		g.drawString(String.format("X: %.2f Y: %.2f Z: %.2f FOV: %.2f", camPos.getX(), camPos.getY(), camPos.getZ(), Math.toDegrees(fieldOfView)), 5, HEIGHT * 2 - 18);
 		g.drawString(String.format("Yaw: %.2f Pitch: %.2f FPS: %d", Math.toDegrees(camRot.getZ()), Math.toDegrees(camRot.getY()), frames), 5, HEIGHT * 2 - 5);
 	}
-
-	@Override
-	public void keyPressed(KeyEvent e) {
-		//resets the camera location and rotation
-		if(e.getKeyCode() == KeyEvent.VK_R) {
-			camPos = new Vector3(WIDTH / 2, HEIGHT / 2, 0);
-			camRot = new Vector3(0, Math.PI / 2, 0);
-		}
-		
-		//handle input movement left-right, up-down, and in-out
-		if(e.getKeyCode() == KeyEvent.VK_A) {
-			camPos.move(new Vector3(-3, 0, 0));
-		}
-		if(e.getKeyCode() == KeyEvent.VK_D) {
-			camPos.move(new Vector3(3, 0, 0));
-		}
-		if(e.getKeyCode() == KeyEvent.VK_E) {
-			camPos.move(new Vector3(0, -3, 0));
-		}
-		if(e.getKeyCode() == KeyEvent.VK_Q) {
-			camPos.move(new Vector3(0, 3, 0));
-		}
-		if(e.getKeyCode() == KeyEvent.VK_W) {
-			camPos.move(new Vector3(0, 0, 0.03));
-		}
-		if(e.getKeyCode() == KeyEvent.VK_S) {
-			camPos.move(new Vector3(0, 0, -0.03));
-		}
-		
-		//change the field of view
-		if(e.getKeyCode() == KeyEvent.VK_Z) {
-			fieldOfView += 0.02;
-			if(fieldOfView > Math.PI) {
-				fieldOfView = Math.PI;
-			}
-		}
-		if(e.getKeyCode() == KeyEvent.VK_X) {
-			fieldOfView -= 0.02;
-			if(fieldOfView < 0) {
-				fieldOfView = 0;
-			}
-		}
-		
-		//handle input for rotation, will be moved to mouse input at some point
-		if(e.getKeyCode() == KeyEvent.VK_CLOSE_BRACKET){
-			camRot.move(new Vector3(0, 0, -Math.PI / 180));
-			if(camRot.getZ() < 0) {
-				camRot.move(new Vector3(0, 0, Math.PI * 2));
-			}
-		}
-		if(e.getKeyCode() == KeyEvent.VK_OPEN_BRACKET){
-			camRot.move(new Vector3(0, 0, Math.PI / 180));
-			if(camRot.getZ() > Math.PI * 2) {
-				camRot.move(new Vector3(0, 0, -Math.PI * 2));
-			}
-		}
-		if(e.getKeyCode() == KeyEvent.VK_MINUS) {
-			camRot.move(new Vector3(0, Math.PI / 180, 0));
-			if(camRot.getY() > Math.PI){
-				camRot.setY(Math.PI);
-			}
-		}
-		if(e.getKeyCode() == KeyEvent.VK_EQUALS) {
-			camRot.move(new Vector3(0, -Math.PI / 180, 0));
-			if(camRot.getY() < 0){
-				camRot.setY(0);
-			}
-		}
+	
+	public void notifyCamChange(Vector3 pos, Vector3 rot, double fov)
+	{
+		camPos = pos;
+		double rotZ = rot.getZ();
+		while(rotZ >= Math.PI * 2)
+			rotZ -= Math.PI * 2;
+		while (rotZ < 0)
+			rotZ += Math.PI * 2;
+		double rotY = rot.getY();
+		if(rotY > Math.PI)
+			rotY = Math.PI;
+		if(rotY < 0)
+			rotY = 0;
+		camRot = new Vector3(0, rotY, rotZ);
+		fieldOfView = fov;
 	}
-
-	@Override
-	public void keyReleased(KeyEvent e) {
-
+	
+	public Vector3 getCamPos() {
+		return camPos;
 	}
-
-	@Override
-	public void keyTyped(KeyEvent e) {
-
+	
+	public Vector3 getCamRot() {
+		return camRot;
+	}
+	
+	public double getFOV() {
+		return fieldOfView;
 	}
 
 }
