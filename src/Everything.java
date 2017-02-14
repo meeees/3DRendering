@@ -114,11 +114,12 @@ public class Everything extends Canvas implements KeyListener {
 		xT /= WIDTH / 2;
 		double yT = point.getY() - camPos.getY();
 		yT /= HEIGHT / 2;
+		yT *= (float) HEIGHT / (float) WIDTH;
 		double zT = point.getZ() - camPos.getZ();
 		boolean neg = zT < 0;
 		double thetaX = Math.atan2(zT, xT);
 		double thetaY = Math.atan2(yT, zT);
-		thetaX += camRot.getZ();
+		thetaX -= camRot.getZ();
 		thetaY += camRot.getY();
 		//System.out.println(Math.toDegrees(theta));
 		double distX = Math.sqrt(xT * xT + zT * zT);
@@ -126,18 +127,21 @@ public class Everything extends Canvas implements KeyListener {
 		double fullDist = Math.sqrt(xT * xT + yT * yT + zT * zT);
 		zT = fullDist * Math.sin(thetaX) * Math.sin(thetaY);
 		xT = distX * Math.cos(thetaX);
+		//System.out.printf("%f - (%f, %f, %f)", xT / zT, point.getX(), point.getY(), point.getZ());
 		yT = distY * Math.cos(thetaY);
 		xT *= WIDTH / 2;
 		yT *= HEIGHT / 2;
 		if(neg) {
 			zT = -zT;
 		}
+		//culling
 		if(zT < 0) {
 			return;
 		}
-		double xCord = (dx * (xT / (zT))) + camPos.getX();
+		double xCord = (dx * (xT / zT)) + camPos.getX() + (WIDTH / 2 - camPos.getX());
 		//xCord += xCord * Math.cos(rot.getZ()) - xCord;
 		double yCord = (dx * (yT / zT)) + camPos.getY();
+		//System.out.printf("%f, %f : %f, %f\n", xCord, yCord, (dx * (xT / (zT))), (dx * (yT / (zT))));
 		//System.out.printf("%.2f : %.2f\n", xCord, yCord);
 		if(xCord >= 0 && xCord < WIDTH && yCord >= 0 && yCord < HEIGHT) {
 			
